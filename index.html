@@ -1,0 +1,131 @@
+<!-- Save this as index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Elixer Coder</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: none;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    #instruction-banner {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 8px 15px;
+      font-size: 14px;
+      border-radius: 0 0 8px 8px;
+      z-index: 9999;
+      user-select: none;
+    }
+    #response-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: none;
+      opacity: 1;
+      visibility: visible;
+      z-index: 9998;
+      pointer-events: none;
+    }
+    #response-box {
+      position: absolute;
+      top: 50px;
+      left: 50px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      background: rgba(25,25,25,0.95);
+      color: #fff;
+      font-size: 15px;
+      line-height: 1.5;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      pointer-events: auto;
+    }
+    #drag-header {
+      background: rgba(40,40,40,0.95);
+      padding: 10px 15px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: move;
+      -webkit-app-region: drag;
+      border-radius: 8px 8px 0 0;
+    }
+    #response-content {
+      max-height: 80vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px;
+      -webkit-app-region: no-drag;
+    }
+    pre {
+      background: rgba(40,40,40,0.95);
+      color: #f0f0f0;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 1em 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .error-message {
+      color: #ff4444;
+      background: rgba(255,68,68,0.1);
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff4444;
+    }
+  </style>
+</head>
+<body>
+  <div id="instruction-banner"></div>
+  <div id="response-overlay">
+    <div id="response-box">
+      <div id="drag-header">OA Coder • Drag Me</div>
+      <div id="response-content"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const { ipcRenderer } = require('electron');
+    marked.setOptions({ breaks: true, gfm: true });
+
+    const updateBanner = (text, show = true) => {
+      const banner = document.getElementById('instruction-banner');
+      banner.style.opacity = show ? '1' : '0';
+      if (text) banner.textContent = text;
+    };
+
+    const handlers = {
+      'analysis-result': (event, result) => {
+        document.getElementById('response-content').innerHTML = marked.parse(result);
+        updateBanner("Ctrl+Shift+R: Repeat process");
+      },
+      'error': (event, error) => {
+        document.getElementById('response-content').innerHTML =
+          `<div class="error-message"><strong>Error:</strong> ${error}</div>`;
+      },
+      'update-instruction': (event, instruction) => updateBanner(instruction, true),
+      'hide-instruction': () => updateBanner('', false),
+      'clear-result': () => document.getElementById('response-content').innerHTML = ""
+    };
+
+    Object.entries(handlers).forEach(([channel, fn]) => ipcRenderer.on(channel, fn));
+    window.addEventListener('unload', () => {
+      Object.keys(handlers).forEach(channel => ipcRenderer.removeAllListeners(channel));
+    });
+
+    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+Q: Quit");
+  </script>
+</body>
+</html>
